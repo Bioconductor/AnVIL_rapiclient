@@ -327,10 +327,9 @@ get_message_body <- function(op_def, x) {
   parameter_idx <- vapply(parameters, function(parameter) {
       identical(parameter[["in"]], "body")
   }, logical(1))
-  parameter_name <- parameters[[which(parameter_idx)]][["name"]]
+  parameter_name <-
+    vapply(parameters[parameter_idx], `[[`, character(1L), "name")
   x <- x[ names(x) %in% parameter_name ]
-  if (length(x))
-    x <- x[[1]]
   json <- jsonlite::toJSON(x, auto_unbox = TRUE, pretty = TRUE)
 
   if(getOption("rapiclient.log_request", default = FALSE)) {
