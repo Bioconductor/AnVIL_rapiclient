@@ -253,12 +253,17 @@ get_operations <- function(api, .headers = NULL, path = NULL,
       api$config
     }
 
+    do_op <- switch(op_def$action,
+        post = httr::POST,
+        put = httr::PUT,
+        get = httr::GET,
+        delete = httr::DELETE
+    )
     # function body
-    if(op_def$action == "post") {
       tmp_fun <- function() {
         x <- eval(param_values)
         request_json <- get_message_body(op_def, x)
-        result <- httr::POST(
+        result <- do_op(
           url = get_url(x),
           config = get_config(),
           body = request_json,
@@ -268,45 +273,6 @@ get_operations <- function(api, .headers = NULL, path = NULL,
         )
         handle_response(result)
       }
-    } else if(op_def$action == "put") {
-      tmp_fun <- function() {
-        x <- eval(param_values)
-        request_json <- get_message_body(op_def, x)
-        result <- httr::PUT(
-          url = get_url(x),
-          config = get_config(),
-          body = request_json,
-          httr::content_type("application/json"),
-          httr::accept_json(),
-          httr::add_headers(.headers = .headers)
-        )
-        handle_response(result)
-      }
-    } else if(op_def$action == "get") {
-      tmp_fun <- function() {
-        x <- eval(param_values)
-        result <- httr::GET(
-          url = get_url(x),
-          config = get_config(),
-          httr::content_type("application/json"),
-          httr::accept_json(),
-          httr::add_headers(.headers = .headers)
-        )
-        handle_response(result)
-      }
-    } else if(op_def$action == "delete") {
-      tmp_fun <- function() {
-        x <- eval(param_values)
-        result <- httr::DELETE(
-          url = get_url(x),
-          config = get_config(),
-          httr::content_type("application/json"),
-          httr::accept_json(),
-          httr::add_headers(.headers = .headers)
-        )
-        handle_response(result)
-      }
-    }
 
     # create function arguments from operation parameters definition
     parameters <- get_parameters(api, op_def$parameters)
