@@ -253,20 +253,21 @@ get_operations <- function(api, .headers = NULL, path = NULL,
       api$config
     }
 
-    do_op <- switch(op_def$action,
-        post = httr::POST,
-        put = httr::PUT,
-        get = httr::GET,
-        delete = httr::DELETE
-    )
     # function body
       tmp_fun <- function() {
         x <- eval(param_values)
         request_json <- get_message_body(op_def, x)
+
+        do_op <- switch(op_def$action,
+            post = function(...) httr::POST(..., body = request_json),
+            put = function(...) httr::PUT(..., body = request_json),
+            get = httr::GET,
+            delete = httr::DELETE
+        )
+
         result <- do_op(
           url = get_url(x),
           config = get_config(),
-          body = request_json,
           httr::content_type("application/json"),
           httr::accept_json(),
           httr::add_headers(.headers = .headers)
