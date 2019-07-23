@@ -178,10 +178,6 @@ get_url <- function(x, api, op_def) {
     )
 }
 
-get_config <- function(api) {
-  api[["config"]]
-}
-
 get_query_funs <- function(op_defs, api, params, handle_res, headers) {
     x <- eval(params)
     lapply(op_defs, function(op_def) {
@@ -197,7 +193,7 @@ get_query_funs <- function(op_defs, api, params, handle_res, headers) {
         tmp_fun <- function() {
             result <- do_op(
                 url = get_url(x, api, op_def),
-                config = get_config(api),
+                config = api[["config"]],
                 httr::content_type("application/json"),
                 httr::accept_json(),
                 httr::add_headers(.headers = headers)
@@ -270,7 +266,6 @@ get_query_funs <- function(op_defs, api, params, handle_res, headers) {
 get_operations <-
     function(api, .headers = NULL, path = NULL, handle_response = identity)
 {
-
     operation_defs <- get_operation_definitions(api, path)
 
     param_values <- expression({
@@ -287,7 +282,6 @@ get_operations <-
         handle_res = handle_response, headers = .headers
     )
 }
-
 
 #' Message body
 #'

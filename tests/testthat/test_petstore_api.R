@@ -1,5 +1,3 @@
-library(testthat)
-
 context("Petstore sample API operations")
 
 test_that("Reads API operations", {
