@@ -182,38 +182,40 @@ get_config <- function(api) {
   api[["config"]]
 }
 
-get_query_fun <- function(op_def, api, params, handle_res, headers) {
+get_query_funs <- function(op_defs, api, params, handle_res, headers) {
     x <- eval(params)
-    request_json <- get_message_body(op_def, x)
+    lapply(op_defs, function(op_def) {
+        request_json <- get_message_body(op_def, x)
 
-    do_op <- switch(op_def$action,
-        post = function(...) httr::POST(..., body = request_json),
-        put = function(...) httr::PUT(..., body = request_json),
-        get = httr::GET,
-        delete = httr::DELETE
-    )
-
-    tmp_fun <- function() {
-        result <- do_op(
-            url = get_url(x, api, op_def),
-            config = get_config(api),
-            httr::content_type("application/json"),
-            httr::accept_json(),
-            httr::add_headers(.headers = headers)
+        do_op <- switch(op_def$action,
+            post = function(...) httr::POST(..., body = request_json),
+            put = function(...) httr::PUT(..., body = request_json),
+            get = httr::GET,
+            delete = httr::DELETE
         )
-        handle_res(result)
-    }
 
-    # create function arguments from operation parameters definition
-    parameters <- get_parameters(api, op_def$parameters)
+        tmp_fun <- function() {
+            result <- do_op(
+                url = get_url(x, api, op_def),
+                config = get_config(api),
+                httr::content_type("application/json"),
+                httr::accept_json(),
+                httr::add_headers(.headers = headers)
+            )
+            handle_res(result)
+        }
 
-    if (length(parameters))
-        formals(tmp_fun) <- do.call(alist, parameters)
+        # create function arguments from operation parameters definition
+        parameters <- get_parameters(api, op_def$parameters)
 
-    # add the complete operation definition as a function attribute
-    attr(tmp_fun, "definition") <- op_def
-    class(tmp_fun) <- c(.class_operation, class(tmp_fun))
-    tmp_fun
+        if (length(parameters))
+            formals(tmp_fun) <- do.call(alist, parameters)
+
+        # add the complete operation definition as a function attribute
+        attr(tmp_fun, "definition") <- op_def
+        class(tmp_fun) <- c(.class_operation, class(tmp_fun))
+        tmp_fun
+    })
 }
 
 #' Get operations
@@ -280,12 +282,9 @@ get_operations <-
             list()
         }
     })
-
-    lapply(operation_defs, function(op_def, api, expr, handler, headers) {
-        get_query_fun(op_def, api, expr, handler, headers)
-    },
-        api = api, expr = param_values, handler = handle_response,
-        headers = .headers
+    get_query_funs(
+        operation_defs, api = api, params = param_values,
+        handle_res = handle_response, headers = .headers
     )
 }
 

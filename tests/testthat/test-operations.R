@@ -17,15 +17,12 @@ test_that("temp_fun returns expected output based on request type", {
         }
     })
 
-    getUserbyName <- api_ops[["getUserByName"]]
-    deleteUser <- api_ops[["deleteUser"]]
-    updateUser <- api_ops[["updateUser"]]
-    addPet <- api_ops[["addPet"]]
+    funs <- get_query_funs(api_ops, api, param_values, identity, NULL)
 
-    getuser <- get_query_fun(getUserbyName, api, param_values, identity, NULL)
-    delop <- get_query_fun(deleteUser, api, param_values, identity, NULL)
-    updateuser <- get_query_fun(updateUser, api, param_values, identity, NULL)
-    addpet <- get_query_fun(addPet, api, param_values, identity, NULL)
+    getuser <- funs[["getUserByName"]]
+    delop <- funs[["deleteUser"]]
+    updateuser <- funs[["updateUser"]]
+    addpet <- funs[["addPet"]]
 
     getAction <- function(query_fun) {
         attributes(query_fun)[["definition"]][["action"]]
