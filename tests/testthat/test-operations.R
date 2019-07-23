@@ -2,8 +2,8 @@ context("Operations testing")
 
 test_that("temp_fun returns expected output based on request type", {
 
-    petstore_spec <-
-        system.file("extdata", "sample_specs", "petstore.json", package = "rapiclient")
+    petstore_spec <- system.file("extdata", "sample_specs", "petstore.json",
+        package = "rapiclient")
     api <- get_api(petstore_spec)
     api_ops <- get_operation_definitions(api, NULL)
 
@@ -22,29 +22,22 @@ test_that("temp_fun returns expected output based on request type", {
     updateUser <- api_ops[["updateUser"]]
     addPet <- api_ops[["addPet"]]
 
-    get_query_fun(deleteUser, x)
+    getuser <- get_query_fun(getUserbyName, api, param_values, identity, NULL)
+    delop <- get_query_fun(deleteUser, api, param_values, identity, NULL)
+    updateuser <- get_query_fun(updateUser, api, param_values, identity, NULL)
+    addpet <- get_query_fun(addPet, api, param_values, identity, NULL)
 
-    tmp_fun <- function(op) {
-        x <- eval(param_values)
-        request_json <- get_message_body(op, x)
-
-        do_op <- switch(op$action,
-            post = function(...) httr::POST(..., body = request_json),
-            put = function(...) httr::PUT(..., body = request_json),
-            get = httr::GET,
-            delete = httr::DELETE
-        )
-
-        result <- do_op(
-          url = get_url(x),
-          config = get_config(),
-          httr::content_type("application/json"),
-          httr::accept_json(),
-          httr::add_headers(.headers = .headers)
-        )
-        handle_response(result)
+    getAction <- function(query_fun) {
+        attributes(query_fun)[["definition"]][["action"]]
     }
 
-    tmp_fun(getUserbyName)
+    expect_identical(class(delop), c("rapi_operation", "function"))
+    expect_identical(class(getuser), c("rapi_operation", "function"))
+    expect_identical(class(updateuser), c("rapi_operation", "function"))
+    expect_identical(class(addpet), c("rapi_operation", "function"))
 
+    expect_identical(getAction(getuser), "get")
+    expect_identical(getAction(delop), "delete")
+    expect_identical(getAction(updateuser), "put")
+    expect_identical(getAction(addpet), "post")
 })

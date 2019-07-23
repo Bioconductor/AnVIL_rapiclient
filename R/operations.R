@@ -182,7 +182,8 @@ get_config <- function(api) {
   api[["config"]]
 }
 
-get_query_fun <- function(op_def, x, headers) {
+get_query_fun <- function(op_def, api, params, handle_res, headers) {
+    x <- eval(params)
     request_json <- get_message_body(op_def, x)
 
     do_op <- switch(op_def$action,
@@ -192,20 +193,16 @@ get_query_fun <- function(op_def, x, headers) {
         delete = httr::DELETE
     )
 
-    do_op(
-      url = get_url(x, api, op_def),
-      config = get_config(api),
-      httr::content_type("application/json"),
-      httr::accept_json(),
-      httr::add_headers(.headers = headers)
-    )
-}
-
-opdef_fun <- function(op_def, api, params, handle_response, headers) {
-
-    x <- eval(params)
-    result <- get_query_fun(op_def, x, headers)
-    tmp_fun <- handle_response(result)
+    tmp_fun <- function() {
+        result <- do_op(
+            url = get_url(x, api, op_def),
+            config = get_config(api),
+            httr::content_type("application/json"),
+            httr::accept_json(),
+            httr::add_headers(.headers = headers)
+        )
+        handle_res(result)
+    }
 
     # create function arguments from operation parameters definition
     parameters <- get_parameters(api, op_def$parameters)
@@ -218,7 +215,6 @@ opdef_fun <- function(op_def, api, params, handle_response, headers) {
     class(tmp_fun) <- c(.class_operation, class(tmp_fun))
     tmp_fun
 }
-
 
 #' Get operations
 #'
@@ -285,10 +281,10 @@ get_operations <-
         }
     })
 
-    lapply(operation_defs, function(op_def, api, expr, handler) {
-        opdef_fun(opdef, api, expr, handler)
+    lapply(operation_defs, function(op_def, api, expr, handler, headers) {
+        get_query_fun(op_def, api, expr, handler, headers)
     },
-        api = api, expr = param_values, hander = handle_response,
+        api = api, expr = param_values, handler = handle_response,
         headers = .headers
     )
 }
