@@ -4,7 +4,7 @@ context("Petstore sample API operations")
 
 test_that("Reads API operations", {
   petstore_spec <-
-    system.file("extdata/sample_specs", "petstore.json", package = "rapiclient")
+    system.file("extdata", "sample_specs", "petstore.json", package = "rapiclient")
   expect_silent(pet_api <- get_api(petstore_spec))
   operations <- get_operations(pet_api)
   for(operation in operations) {

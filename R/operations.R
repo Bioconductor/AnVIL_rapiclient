@@ -172,7 +172,52 @@ get_operation_definitions <- function(api, path = NULL) {
   ret
 }
 
+get_url <- function(x, api, op_def) {
+    build_op_url(
+        api, api$schemes[1], api$host, api$basePath, op_def, x
+    )
+}
 
+get_config <- function(api) {
+  api[["config"]]
+}
+
+get_query_fun <- function(op_def, x, headers) {
+    request_json <- get_message_body(op_def, x)
+
+    do_op <- switch(op_def$action,
+        post = function(...) httr::POST(..., body = request_json),
+        put = function(...) httr::PUT(..., body = request_json),
+        get = httr::GET,
+        delete = httr::DELETE
+    )
+
+    do_op(
+      url = get_url(x, api, op_def),
+      config = get_config(api),
+      httr::content_type("application/json"),
+      httr::accept_json(),
+      httr::add_headers(.headers = headers)
+    )
+}
+
+opdef_fun <- function(op_def, api, params, handle_response, headers) {
+
+    x <- eval(params)
+    result <- get_query_fun(op_def, x, headers)
+    tmp_fun <- handle_response(result)
+
+    # create function arguments from operation parameters definition
+    parameters <- get_parameters(api, op_def$parameters)
+
+    if (length(parameters))
+        formals(tmp_fun) <- do.call(alist, parameters)
+
+    # add the complete operation definition as a function attribute
+    attr(tmp_fun, "definition") <- op_def
+    class(tmp_fun) <- c(.class_operation, class(tmp_fun))
+    tmp_fun
+}
 
 
 #' Get operations
@@ -224,69 +269,28 @@ get_operation_definitions <- function(api, path = NULL) {
 #'   get_operations(api, .headers = c("api-key" = Sys.getenv("SOME_API_KEY"))
 #' }
 #' @export
-get_operations <- function(api, .headers = NULL, path = NULL,
-                           handle_response = identity) {
+get_operations <-
+    function(api, .headers = NULL, path = NULL, handle_response = identity)
+{
 
-  operation_defs <- get_operation_definitions(api, path)
+    operation_defs <- get_operation_definitions(api, path)
 
-  param_values <- expression({
-    if (length(formals()) > 0) {
-      l1 <- as.list(mget(names(formals()), environment()))
-      l1 <- l1[lapply(l1, mode) != "name"]
-      x <- l1[!vapply(l1, is.null, logical(1))]
-    } else {
-      x <- list()
-    }
-    x
-  })
+    param_values <- expression({
+        if (length(formals()) > 0) {
+            l1 <- as.list(mget(names(formals()), environment()))
+            l1 <- l1[lapply(l1, mode) != "name"]
+            l1[!vapply(l1, is.null, logical(1))]
+        } else {
+            list()
+        }
+    })
 
-  lapply(operation_defs, function(op_def){
-
-    # url
-    get_url <- function(x) {
-      url <-
-        build_op_url(api, api$schemes[1], api$host, api$basePath, op_def, x)
-      return(url)
-    }
-
-    get_config <- function(x) {
-      api$config
-    }
-
-    # function body
-      tmp_fun <- function() {
-        x <- eval(param_values)
-        request_json <- get_message_body(op_def, x)
-
-        do_op <- switch(op_def$action,
-            post = function(...) httr::POST(..., body = request_json),
-            put = function(...) httr::PUT(..., body = request_json),
-            get = httr::GET,
-            delete = httr::DELETE
-        )
-
-        result <- do_op(
-          url = get_url(x),
-          config = get_config(),
-          httr::content_type("application/json"),
-          httr::accept_json(),
-          httr::add_headers(.headers = .headers)
-        )
-        handle_response(result)
-      }
-
-    # create function arguments from operation parameters definition
-    parameters <- get_parameters(api, op_def$parameters)
-    if(length(parameters)) {
-      formals(tmp_fun) <- do.call(alist, parameters)
-    }
-
-    # add the complete operation definition as a function attribute
-    attr(tmp_fun, "definition") <- op_def
-    class(tmp_fun) <- c(.class_operation, class(tmp_fun))
-    tmp_fun
-  })
-
+    lapply(operation_defs, function(op_def, api, expr, handler) {
+        opdef_fun(opdef, api, expr, handler)
+    },
+        api = api, expr = param_values, hander = handle_response,
+        headers = .headers
+    )
 }
 
 
