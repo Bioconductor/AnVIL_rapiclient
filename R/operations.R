@@ -172,16 +172,15 @@ get_operation_definitions <- function(api, path = NULL) {
   ret
 }
 
-get_url <- function(x, api, op_def) {
-    build_op_url(
-        api, api$schemes[1], api$host, api$basePath, op_def, x
-    )
-}
 
 get_query_funs <- function(op_defs, api, params, handle_res, headers) {
-    x <- eval(params)
     lapply(op_defs, function(op_def) {
-        request_json <- get_message_body(op_def, x)
+
+        get_url <- function(x) {
+            build_op_url(
+                api, api$schemes[1], api$host, api$basePath, op_def, x
+            )
+        }
 
         do_op <- switch(op_def$action,
             post = function(...) httr::POST(..., body = request_json),
@@ -191,8 +190,10 @@ get_query_funs <- function(op_defs, api, params, handle_res, headers) {
         )
 
         tmp_fun <- function() {
+            x <- eval(params)
+            request_json <- get_message_body(op_def, x)
             result <- do_op(
-                url = get_url(x, api, op_def),
+                url = get_url(x),
                 config = api[["config"]],
                 httr::content_type("application/json"),
                 httr::accept_json(),
