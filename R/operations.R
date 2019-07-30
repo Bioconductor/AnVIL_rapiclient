@@ -182,16 +182,15 @@ get_query_funs <- function(op_defs, api, params, handle_res, headers) {
             )
         }
 
-        do_op <- switch(op_def$action,
-            post = function(...) httr::POST(..., body = request_json),
-            put = function(...) httr::PUT(..., body = request_json),
-            get = httr::GET,
-            delete = httr::DELETE
-        )
-
         tmp_fun <- function() {
             x <- eval(params)
             request_json <- get_message_body(op_def, x)
+            do_op <- switch(op_def$action,
+                post = function(...) httr::POST(..., body = request_json),
+                put = function(...) httr::PUT(..., body = request_json),
+                get = httr::GET,
+                delete = httr::DELETE
+            )
             result <- do_op(
                 url = get_url(x),
                 config = api[["config"]],
