@@ -15,6 +15,7 @@ License: MIT + file LICENSE
 Imports:
   jsonlite,
   httr,
+  utils,
   yaml
 LazyData: TRUE
 RoxygenNote: 6.1.1

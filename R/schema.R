@@ -23,7 +23,7 @@ get_schema <- function(api, ref, compose_allOf = FALSE) {
     }
   }
 
-  attr(schema, "name") <- tail(defwords, 1L)
+  attr(schema, "name") <- utils::tail(defwords, 1L)
   class(schema) <- c(.class_schema, class(schema))
   schema
 }
