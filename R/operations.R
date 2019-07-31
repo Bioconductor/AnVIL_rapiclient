@@ -173,7 +173,46 @@ get_operation_definitions <- function(api, path = NULL) {
 }
 
 
+get_query_funs <- function(op_defs, api, params, handle_res, headers) {
+    lapply(op_defs, function(op_def) {
 
+        get_url <- function(x) {
+            build_op_url(
+                api, api$schemes[1], api$host, api$basePath, op_def, x
+            )
+        }
+
+        tmp_fun <- function() {
+            x <- eval(params)
+            request_json <- get_message_body(op_def, x)
+            do_op <- switch(op_def$action,
+                post = function(...) httr::POST(..., body = request_json),
+                put = function(...) httr::PUT(..., body = request_json),
+                get = httr::GET,
+                delete = httr::DELETE
+            )
+            result <- do_op(
+                url = get_url(x),
+                config = api[["config"]],
+                httr::content_type("application/json"),
+                httr::accept_json(),
+                httr::add_headers(.headers = headers)
+            )
+            handle_res(result)
+        }
+
+        # create function arguments from operation parameters definition
+        parameters <- get_parameters(api, op_def$parameters)
+
+        if (length(parameters))
+            formals(tmp_fun) <- do.call(alist, parameters)
+
+        # add the complete operation definition as a function attribute
+        attr(tmp_fun, "definition") <- op_def
+        class(tmp_fun) <- c(.class_operation, class(tmp_fun))
+        tmp_fun
+    })
+}
 
 #' Get operations
 #'
@@ -224,104 +263,25 @@ get_operation_definitions <- function(api, path = NULL) {
 #'   get_operations(api, .headers = c("api-key" = Sys.getenv("SOME_API_KEY"))
 #' }
 #' @export
-get_operations <- function(api, .headers = NULL, path = NULL,
-                           handle_response = identity) {
+get_operations <-
+    function(api, .headers = NULL, path = NULL, handle_response = identity)
+{
+    operation_defs <- get_operation_definitions(api, path)
 
-  operation_defs <- get_operation_definitions(api, path)
-
-  param_values <- expression({
-    if (length(formals()) > 0) {
-      l1 <- as.list(mget(names(formals()), environment()))
-      l1 <- l1[lapply(l1, mode) != "name"]
-      x <- l1[!vapply(l1, is.null, logical(1))]
-    } else {
-      x <- list()
-    }
-    x
-  })
-
-  lapply(operation_defs, function(op_def){
-
-    # url
-    get_url <- function(x) {
-      url <-
-        build_op_url(api, api$schemes[1], api$host, api$basePath, op_def, x)
-      return(url)
-    }
-
-    get_config <- function(x) {
-      api$config
-    }
-
-    # function body
-    if(op_def$action == "post") {
-      tmp_fun <- function() {
-        x <- eval(param_values)
-        request_json <- get_message_body(op_def, x)
-        result <- httr::POST(
-          url = get_url(x),
-          config = get_config(),
-          body = request_json,
-          httr::content_type("application/json"),
-          httr::accept_json(),
-          httr::add_headers(.headers = .headers)
-        )
-        handle_response(result)
-      }
-    } else if(op_def$action == "put") {
-      tmp_fun <- function() {
-        x <- eval(param_values)
-        request_json <- get_message_body(op_def, x)
-        result <- httr::PUT(
-          url = get_url(x),
-          config = get_config(),
-          body = request_json,
-          httr::content_type("application/json"),
-          httr::accept_json(),
-          httr::add_headers(.headers = .headers)
-        )
-        handle_response(result)
-      }
-    } else if(op_def$action == "get") {
-      tmp_fun <- function() {
-        x <- eval(param_values)
-        result <- httr::GET(
-          url = get_url(x),
-          config = get_config(),
-          httr::content_type("application/json"),
-          httr::accept_json(),
-          httr::add_headers(.headers = .headers)
-        )
-        handle_response(result)
-      }
-    } else if(op_def$action == "delete") {
-      tmp_fun <- function() {
-        x <- eval(param_values)
-        result <- httr::DELETE(
-          url = get_url(x),
-          config = get_config(),
-          httr::content_type("application/json"),
-          httr::accept_json(),
-          httr::add_headers(.headers = .headers)
-        )
-        handle_response(result)
-      }
-    }
-
-    # create function arguments from operation parameters definition
-    parameters <- get_parameters(api, op_def$parameters)
-    if(length(parameters)) {
-      formals(tmp_fun) <- do.call(alist, parameters)
-    }
-
-    # add the complete operation definition as a function attribute
-    attr(tmp_fun, "definition") <- op_def
-    class(tmp_fun) <- c(.class_operation, class(tmp_fun))
-    tmp_fun
-  })
-
+    param_values <- expression({
+        if (length(formals()) > 0) {
+            l1 <- as.list(mget(names(formals()), environment()))
+            l1 <- l1[lapply(l1, mode) != "name"]
+            l1[!vapply(l1, is.null, logical(1))]
+        } else {
+            list()
+        }
+    })
+    get_query_funs(
+        operation_defs, api = api, params = param_values,
+        handle_res = handle_response, headers = .headers
+    )
 }
-
 
 #' Message body
 #'
