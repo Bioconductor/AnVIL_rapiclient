@@ -62,6 +62,18 @@ get_schema_function <- function(schema) {
   f1
 }
 
+get_def_names <- function(api) {
+  def <- api[["definitions"]]
+
+  if (is.null(def)) {
+    defwords <- c("components", "schemas")
+    def <- api
+    for (word in defwords)
+      def <- def[[word]]
+  }
+  names(def)
+}
+
 #' Get schemas
 #'
 #' Returns a list of functions with arguments from API schemas. Elements are
@@ -71,16 +83,7 @@ get_schema_function <- function(schema) {
 #' @return A list of functions
 #' @export
 get_schemas <- function(api) {
-  def <- api[["definitions"]]
-
-  if (is.null(def)) {
-    defwords <- c("components", "schemas")
-    def <- api
-    for (word in defwords)
-      def <- def[[word]]
-  }
-  defnames <- names(def)
-
+  defnames <- get_def_names(api)
   function_list <-
     lapply(defnames, function(schema_name) {
       schema <- get_schema(api, schema_name, compose_allOf = TRUE)
