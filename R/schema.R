@@ -91,8 +91,7 @@ get_schemas <- function(api) {
       }
     })
   names(function_list) <- defnames
-  function_list <- function_list[!vapply(function_list, is.null, logical(1))]
-  function_list
+  Filter(is.function, function_list)
 }
 
 
