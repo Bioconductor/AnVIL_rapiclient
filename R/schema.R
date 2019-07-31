@@ -1,14 +1,19 @@
 get_schema <- function(api, ref, compose_allOf = FALSE) {
-  if(!grepl("^#/definitions", ref )) {
-    ref <- paste0("#/definitions/", ref)
+  if (startsWith(ref, "#")) {
+    ref <- gsub("#/", "", ref, fixed = TRUE)
+  } else {
+    ref <-
+      if (!is.null(api[["definitions"]]))
+        file.path("definitions", ref)
+      else
+        file.path("components", "schemas", ref)
   }
-  ref_pos <- strsplit(ref, "/")[[1]]
-  schema <- api[[ref_pos[[2]]]][[ref_pos[[3]]]]
-  if(is.null(schema)) {
-    ref_pos <- gsub(" ", "_", ref_pos)
-    schema <- api[[ref_pos[[2]]]][[ref_pos[[3]]]]
+  defwords <- strsplit(ref, "/")[[1]]
+  defwords <- gsub(" ", "_", defwords)
+  schema <- api
+  for (keyword in defwords) {
+      schema <- schema[[keyword]]
   }
-
 
   if(!is.null(schema$allOf) && compose_allOf) {
     allOfProperties <- get_allOf(api, schema$allOf)
@@ -18,7 +23,7 @@ get_schema <- function(api, ref, compose_allOf = FALSE) {
     }
   }
 
-  attr(schema, "name") <- ref_pos[[3]]
+  attr(schema, "name") <- tail(defwords, 1L)
   class(schema) <- c(.class_schema, class(schema))
   schema
 }
@@ -66,9 +71,18 @@ get_schema_function <- function(schema) {
 #' @return A list of functions
 #' @export
 get_schemas <- function(api) {
+  def <- api[["definitions"]]
+
+  if (is.null(def)) {
+    defwords <- c("components", "schemas")
+    def <- api
+    for (word in defwords)
+      def <- def[[word]]
+  }
+  defnames <- names(def)
 
   function_list <-
-    lapply(names(api$definitions), function(schema_name) {
+    lapply(defnames, function(schema_name) {
       schema <- get_schema(api, schema_name, compose_allOf = TRUE)
       if(length(schema$properties)) {
         get_schema_function(schema)
@@ -76,7 +90,7 @@ get_schemas <- function(api) {
         NULL
       }
     })
-  names(function_list) <- names(api$definitions)
+  names(function_list) <- defnames
   function_list <- function_list[!vapply(function_list, is.null, logical(1))]
   function_list
 }
