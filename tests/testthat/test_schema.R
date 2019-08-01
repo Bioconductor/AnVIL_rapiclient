@@ -2,7 +2,7 @@ context("Check that schemas are populated in APIs")
 
 test_that("schema functions are returning what is expected", {
 
-    .getSchemaUnname <- function(api, schema_name) {
+    .gsunname <- function(api, schema_name) {
         rapi <- get_schema(api, schema_name)
         attributes(rapi)$name <- NULL
         attributes(rapi)$class <- NULL
@@ -18,7 +18,31 @@ test_that("schema functions are returning what is expected", {
     expect_equal(names(get_schemas(api)), schema_names)
 
     for (sname in schema_names) {
-        aname <- .getSchemaUnname(api, sname)
+        aname <- .gsunname(api, sname)
         expect_equal(aname, apijson$definitions[[sname]])
     }
+
+    # openAPIs
+    openapi <- list(
+        components = list(
+            schemas = list(
+                fun1 = list(
+                    properties = list(
+                        id = list(type = "integer", format = "int64")
+                    )
+                ),
+                fun2 = list(
+                    format = "text"
+                )
+            )
+        )
+    )
+    funinfo1 <- openapi$components$schemas$fun1
+    funinfo2 <- openapi$components$schemas$fun2
+    rfun1 <- .gsunname(openapi, "fun1")
+    expect_equal(funinfo, rfun1)
+    rfun2 <- .gsunname(openapi, "fun2")
+    expect_equal(funinfo2, rfun2)
+    fun1 <- get_schema_function(get_schema(openapi, "fun1"))
+    expect_true(is.function(fun1))
 })
