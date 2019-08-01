@@ -44,5 +44,7 @@ test_that("schema functions are returning what is expected", {
     rfun2 <- .gsunname(openapi, "fun2")
     expect_equal(funinfo2, rfun2)
     fun1 <- get_schema_function(get_schema(openapi, "fun1"))
+    fun2 <- get_schema_function(get_schema(openapi, "fun2"))
     expect_true(is.function(fun1))
+    expect_true(!is.function(fun2))
 })
